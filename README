@@ -1,0 +1,2 @@
+A simple script that generates an ICS file for football fixtures based on the lists on the BBC Sport website.
+The resulting URL can then be added to either iCal or Google Calendar, and is automatically synchronised with the BBC site.
