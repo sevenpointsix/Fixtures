@@ -54,7 +54,7 @@ if ($html = @file_get_html($url)) {
 		$year = date("Y");
 		$start = $fixture['date'] . ' '.$year.' '.$fixture['time'];
 		if (strtotime($start) < time()) {		
-			$start = $fixture['date'] . ' '.$year++.' '.$fixture['time'];
+			$start = $fixture['date'] . ' '.($year + !).' '.$fixture['time'];
 		}
 		$fixture['start'] 	= strtotime($start);
 		$fixture['end'] 	= strtotime('+105 minutes',$fixture['start']);	
