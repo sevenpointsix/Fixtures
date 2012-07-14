@@ -44,21 +44,31 @@ if ($html = @file_get_html($url)) {
 			$value = $row->find("td.$class",0);
 			$fixture[$key] = preg_replace('/\s\s+/', ' ', trim($value->plaintext));
 		} 
-		
+
 		/*
 			Establishing the year of the fixture is quite tricky, without some advanced parsing of the table headers and so on.
 			However, we know that we're lookin at fixtures that are in the future. So:
 			If the fixture is this year, and it's in the future, assume it takes place this year
 			Otherwise, if the fixture would already have passed if it was this year, assume it's next year		
 		*/
+		/* Update: this is no longer required, as the BBC now include the year with the fixture date: 
 		$year = date("Y");
-		$start = $fixture['date'] . ' '.$year.' '.$fixture['time'];
+		$start = $fixture['date'] . ' '.$year.' '.$fixture['time'];		
 		if (strtotime($start) < time()) {		
 			$start = $fixture['date'] . ' '.($year + 1).' '.$fixture['time'];
 		}
+		$fixture['start'] 	= strtotime($start);	
 		$fixture['start'] 	= strtotime($start);
 		$fixture['end'] 	= strtotime('+105 minutes',$fixture['start']);	
-				
+		*/
+		
+		// Instead, we now use the DateTime class to correctly identify the start date/time:
+		$start = date_create_from_format('d/m/Y H:i', $fixture['date'] . ' ' . $fixture['time']);			
+		$fixture['start'] 	= date_timestamp_get($start);
+
+		$end = date_modify($start,'+105 minutes');
+		$fixture['end'] 	= date_timestamp_get($end);
+
 		$fixtures[] = $fixture;
 	}
 
