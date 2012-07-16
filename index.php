@@ -44,34 +44,34 @@ if ($html = @file_get_html($url)) {
 			$value = $row->find("td.$class",0);
 			$fixture[$key] = preg_replace('/\s\s+/', ' ', trim($value->plaintext));
 		} 
-
-		/*
-			Establishing the year of the fixture is quite tricky, without some advanced parsing of the table headers and so on.
-			However, we know that we're lookin at fixtures that are in the future. So:
-			If the fixture is this year, and it's in the future, assume it takes place this year
-			Otherwise, if the fixture would already have passed if it was this year, assume it's next year		
-		*/
-		/* Update: this is no longer required, as the BBC now include the year with the fixture date: 
-		$year = date("Y");
-		$start = $fixture['date'] . ' '.$year.' '.$fixture['time'];		
-		if (strtotime($start) < time()) {		
-			$start = $fixture['date'] . ' '.($year + 1).' '.$fixture['time'];
+	
+		// Use the DateTime class (when possible) to correctly identify the start date/time:
+		if (function_exists('date_create_from_format')) {
+			$start = date_create_from_format('d/m/Y H:i', $fixture['date'] . ' ' . $fixture['time']);			
+			$fixture['start'] 	= date_timestamp_get($start);
+			// Matches end 105 minutes after they start; 45 minutes each way plus half time (obviously).
+			$end = date_modify($start,'+105 minutes');
+			$fixture['end'] 	= date_timestamp_get($end);
 		}
-		$fixture['start'] 	= strtotime($start);	
-		$fixture['start'] 	= strtotime($start);
-		$fixture['end'] 	= strtotime('+105 minutes',$fixture['start']);	
-		*/
-		
-		// Instead, we now use the DateTime class to correctly identify the start date/time:
-		$start = date_create_from_format('d/m/Y H:i', $fixture['date'] . ' ' . $fixture['time']);			
-		$fixture['start'] 	= date_timestamp_get($start);
-
-		$end = date_modify($start,'+105 minutes');
-		$fixture['end'] 	= date_timestamp_get($end);
-
-		$fixtures[] = $fixture;
+		else {
+			// For PHP < 5.3, we'll use the previous approach, but this is less reliable:
+			$time = explode(':', $fixture['time']);
+			$date = explode('/', $fixture['date']);
+			if (count($date) == 3 && count($time) == 2) {
+				list($hour,$minute) 	= $time;								
+				list($day,$month,$year) = $date;		
+				if ($start = @mktime((int)$hour,(int)$minute,0,(int)$month,(int)$day,(int)$year)) {
+					$fixture['start'] 	= $start;					
+					$fixture['end'] 	= $start + (60 * 105); // 105 minutes					
+				}				
+			}
+		}
+		if (isset($fixture['start']) && isset($fixture['end'])) {
+			// Only add this fixture if we've been able to properly identify the kick-off time and date
+			$fixtures[] = $fixture;
+		}		
 	}
-
+	
 	if (count($fixtures) == 0) {
 		$error = 'Cannot parse data; check for updates';
 	}
