@@ -44,17 +44,34 @@ if ($html = @file_get_html($url)) {
 			$value = $row->find("td.$class",0);
 			$fixture[$key] = preg_replace('/\s\s+/', ' ', trim($value->plaintext));
 		} 
-	
+		
+		// The BBC sometimes flip between including the year within a fixture, or not
+		// This is a crude check; if the date doesn't appear to end in the current or next year,
+		// attempt to append the correct year to it
+		if (!in_array(substr($fixture['date'],-2),array(date('y'),date('y')+1))) {
+			$year = date("Y");
+			if (strtotime($fixture['date'] . ' '.$year) < time()) {		
+				// If this fixture took place this year, it would occur in the past
+				// so we can assume it's a fixture from next year
+				// (the BBC only list forthcoming fixtures, not previous ones)
+				$fixture['date'] .= ' '.($year +1);
+			}
+			else {
+				$fixture['date'] .= ' '.$year;
+			}
+		}
+		
 		// Use the DateTime class (when possible) to correctly identify the start date/time:
 		if (function_exists('date_create_from_format')) {
-			$start = date_create_from_format('d/m/Y H:i', $fixture['date'] . ' ' . $fixture['time']);			
+			$start = date_create_from_format('D j M Y H:i', $fixture['date'] . ' ' . $fixture['time']);			
 			$fixture['start'] 	= date_timestamp_get($start);
 			// Matches end 105 minutes after they start; 45 minutes each way plus half time (obviously).
 			$end = date_modify($start,'+105 minutes');
 			$fixture['end'] 	= date_timestamp_get($end);
 		}
 		else {
-			// For PHP < 5.3, we'll use the previous approach, but this is less reliable:
+			// For PHP < 5.3, we'll use the previous approach, but this is less reliable
+			// FIXME: known issue. The BBC date format has changed again and isn't compatible with explode('/')
 			$time = explode(':', $fixture['time']);
 			$date = explode('/', $fixture['date']);
 			if (count($date) == 3 && count($time) == 2) {
