@@ -50,8 +50,8 @@ if ($html = @file_get_html($url)) {
 		// attempt to append the correct year to it
 		if (!in_array(substr($fixture['date'],-2),array(date('y'),date('y')+1))) {
 			$year = date("Y");
-			if (strtotime($fixture['date'] . ' '.$year) < time()) {		
-				// If this fixture took place this year, it would occur in the past
+			if (strtotime($fixture['date'] . ' '.$year) < strtotime('today')) {		
+				// If this fixture took place this year, it would occur in the past (before today)
 				// so we can assume it's a fixture from next year
 				// (the BBC only list forthcoming fixtures, not previous ones)
 				$fixture['date'] .= ' '.($year +1);
@@ -61,7 +61,8 @@ if ($html = @file_get_html($url)) {
 			}
 		}
 		
-		// Use the DateTime class (when possible) to correctly identify the start date/time:
+		// Currently, the date/time format is compatible with strtotime(); this isn't always the case.
+		// So, for PHP >=5.3, we'll use the DateTime class to correctly identify the start date/time:
 		if (function_exists('date_create_from_format')) {
 			$start = date_create_from_format('D j M Y H:i', $fixture['date'] . ' ' . $fixture['time']);			
 			$fixture['start'] 	= date_timestamp_get($start);
@@ -70,10 +71,10 @@ if ($html = @file_get_html($url)) {
 			$fixture['end'] 	= date_timestamp_get($end);
 		}
 		else {
-			// For PHP < 5.3, we'll use the previous approach, but this is less reliable
-			// FIXME: known issue. The BBC date format has changed again and isn't compatible with explode('/')
+			// For PHP < 5.3, we'll use strtotime, but as above, this doesn't always work
+			/* This is some legacy code that handles some non-strtotime-compatible dates, when necessary:
 			$time = explode(':', $fixture['time']);
-			$date = explode('/', $fixture['date']);
+			$date = explode('/', $fixture['date']);			
 			if (count($date) == 3 && count($time) == 2) {
 				list($hour,$minute) 	= $time;								
 				list($day,$month,$year) = $date;		
@@ -82,6 +83,10 @@ if ($html = @file_get_html($url)) {
 					$fixture['end'] 	= $start + (60 * 105); // 105 minutes					
 				}				
 			}
+			*/
+			$start = strtotime($fixture['date'].' '.$fixture['time']);
+			$fixture['start'] 	= $start;
+			$fixture['end'] 	= $start + (60 * 105); // 105 minutes
 		}
 		if (isset($fixture['start']) && isset($fixture['end'])) {
 			// Only add this fixture if we've been able to properly identify the kick-off time and date
